@@ -5,7 +5,8 @@ let lastTap = 0; // Time since the last tap
 let longPressDuration = 500; // Time in milliseconds for a long press
 
 function setup() {
-    createCanvas(640, 480);
+    // Set the canvas to the size of the window
+    createCanvas(windowWidth, windowHeight);
     
     // Define camera constraints for the rear-facing (environment) camera without microphone
     let constraints = {
@@ -17,13 +18,13 @@ function setup() {
 
     // Create a video capture with the defined constraints
     video = createCapture(constraints);
-    video.size(width, height);
+    video.size(windowWidth, windowHeight); // Match the video size to the window size
     video.hide(); // Hide the HTML video element
 }
 
 function draw() {
     background(0);
-    image(video, 0, 0); // Draw the video feed
+    image(video, 0, 0, width, height); // Draw the video feed to cover the full canvas
 
     // Draw all marks
     for (let mark of marks) {
@@ -58,4 +59,10 @@ function touchEnded() {
         lastTap = currentTime;
     }
     return false; // Prevent default browser behavior
+}
+
+// Resize canvas and video when the window is resized
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+    video.size(windowWidth, windowHeight); // Resize video to match new canvas size
 }
