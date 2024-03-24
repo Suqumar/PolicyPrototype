@@ -1,68 +1,97 @@
 let video;
-let marks = []; // Array to store the positions where you click or touch
+let marks = []; // Array to store positions for long presses
+let drawings = []; // Store drawing paths
+let currentPath = []; // Store points for the current path
 let touchStart = 0; // Time when the touch started
 let lastTap = 0; // Time since the last tap
 let longPressDuration = 500; // Time in milliseconds for a long press
 
 function setup() {
-    // Set the canvas to the size of the window
     createCanvas(windowWidth, windowHeight);
-    
-    // Define camera constraints for the rear-facing (environment) camera without microphone
+
     let constraints = {
         video: {
             facingMode: "environment"
         },
-        audio: false // Do not request microphone access
+        audio: false
     };
 
-    // Create a video capture with the defined constraints
     video = createCapture(constraints);
-    video.size(windowWidth, windowHeight); // Match the video size to the window size
-    video.hide(); // Hide the HTML video element
+    video.size(windowWidth, windowHeight);
+    video.hide();
+
+    stroke(255, 0, 0); // Default drawing color
+    strokeWeight(3); // Default stroke weight
+    noFill(); // Ensure that shapes are not filled
 }
 
 function draw() {
     background(0);
-    image(video, 0, 0, width, height); // Draw the video feed to cover the full canvas
+    image(video, 0, 0, width, height);
 
-    // Draw all marks
-    for (let mark of marks) {
-        drawMark(mark.x, mark.y); // Draw an X at each marked position
+    // Draw all long press marks
+    marks.forEach(mark => drawMark(mark.x, mark.y));
+
+    // Draw all paths
+    drawings.forEach(path => {
+        beginShape();
+        path.forEach(pt => {
+            vertex(pt.x, pt.y);
+        });
+        endShape();
+    });
+
+    // Also draw the current path
+    if (currentPath.length > 0) {
+        beginShape();
+        currentPath.forEach(pt => {
+            vertex(pt.x, pt.y);
+        });
+        endShape();
     }
 }
 
 function drawMark(x, y) {
-    stroke(255, 0, 0); // Red color for the X mark
-    strokeWeight(3); // Stroke weight for the X mark
-    line(x - 10, y - 10, x + 10, y + 10); // Draw one line of the X
-    line(x + 10, y - 10, x - 10, y + 10); // Draw the other line of the X
+    line(x - 10, y - 10, x + 10, y + 10);
+    line(x + 10, y - 10, x - 10, y + 10);
 }
 
-function touchStarted() {
-    touchStart = millis(); // Record the start time of the touch
-    return false; // Prevent default browser behavior
+function touchStarted(event) {
+    touchStart = millis();
+
+    // Check if the input is from an Apple Pencil or similar stylus
+    if (event.touches && event.touches[0] && event.touches[0].touchType === 'stylus') {
+        isDrawing = true;
+        currentPath = [];
+        return false; // Prevent default
+    }
+    return true; // Allow default for non-stylus touches
+}
+
+function touchMoved() {
+    if (isDrawing) {
+        currentPath.push({x: mouseX, y: mouseY});
+    }
+    return false; // Prevent default actions like scrolling
 }
 
 function touchEnded() {
     let currentTime = millis();
     let touchDuration = currentTime - touchStart;
 
-    if (touchDuration > longPressDuration) {
-        // Long press detected, add a mark
+    if (isDrawing) {
+        drawings.push(currentPath);
+        isDrawing = false;
+    } else if (touchDuration > longPressDuration) {
         marks.push({x: mouseX, y: mouseY});
-    } else {
-        // Check for double tap
-        if (currentTime - lastTap < 300) {
-            saveCanvas('marked_image', 'jpg'); // Save the image on double-tap
-        }
-        lastTap = currentTime;
+    } else if (currentTime - lastTap < 300) {
+        saveCanvas('marked_image', 'jpg');
     }
-    return false; // Prevent default browser behavior
+    lastTap = currentTime;
+    return false;
 }
 
-// Resize canvas and video when the window is resized
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
-    video.size(windowWidth, windowHeight); // Resize video to match new canvas size
+    video.size(windowWidth, windowHeight);
 }
